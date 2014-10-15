@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/progrium/go-basher"
 )
 
 func assert(err error) {
