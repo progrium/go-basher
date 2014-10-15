@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/dustin/go-jsonpointer"
 	"github.com/progrium/go-basher"
 )
 
@@ -14,17 +17,20 @@ func assert(err error) {
 	}
 }
 
-func helloworld(args []string) int {
+func hellogo(args []string) int {
 	print("Hello world from Go\n")
 	return 0
 }
 
-func echo(args []string) int {
-	if len(args) > 0 {
-		for _, arg := range args {
-			println(arg)
-		}
+func jpointer(args []string) int {
+	if len(args) == 0 {
+		return 3
 	}
+	bytes, err := ioutil.ReadAll(os.Stdin)
+	assert(err)
+	var o map[string]interface{}
+	assert(json.Unmarshal(bytes, &o))
+	println(jsonpointer.Get(o, args[0]).(string))
 	return 0
 }
 
@@ -41,13 +47,13 @@ func reverse(args []string) int {
 
 func main() {
 	bash := basher.NewContext()
-	bash.ExportFunc("helloworld", helloworld)
-	bash.ExportFunc("go-echo", echo)
+	bash.ExportFunc("hello-go", hellogo)
+	bash.ExportFunc("jpointer", jpointer)
 	bash.ExportFunc("reverse", reverse)
-	bash.HandleFuncs()
+	bash.HandleFuncs(os.Args)
 
 	bash.Source("./example.bash")
-	status, err := bash.Run("main", os.Args)
+	status, err := bash.Run("main", os.Args[1:])
 	assert(err)
 	os.Exit(status)
 }

@@ -88,7 +88,7 @@ func (c *Context) HandleFuncs(args []string) {
 					os.Exit(c.fns[cmd](args[i+2:]))
 				}
 			}
-			os.Exit(2)
+			os.Exit(6)
 		}
 	}
 }
@@ -111,7 +111,7 @@ func (c *Context) buildEnvfile() (string, error) {
 		}
 	}
 	for cmd := range c.fns {
-		file.Write([]byte(cmd + "() { $PROGRAM :: " + cmd + "; }\n"))
+		file.Write([]byte(cmd + "() { $PROGRAM :: " + cmd + " \"$@\"; }\n"))
 	}
 	return file.Name(), nil
 }

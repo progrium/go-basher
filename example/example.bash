@@ -1,18 +1,14 @@
 
 set -eo pipefail
 
-bash-helloworld() {
+hello-bash() {
 	echo "Hello world from Bash"
 }
 
-callgo() {
-	helloworld
-	go-echo "$@"
-	cat | reverse
-}
-
 main() {
-	echo $1
-	bash-helloworld
-	callgo "$@"
+	echo "Arguments:" "$@"
+	hello-bash
+	hello-go
+	hello-bash | reverse
+	curl -s https://api.github.com/repos/progrium/go-basher | jpointer /owner/login
 }
