@@ -3,10 +3,8 @@ package basher
 import (
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -30,17 +28,17 @@ func exitStatus(err error) (int, error) {
 func RunBash(envfile string, command string, args []string, env []string) (int, error) {
 	executable, err := osext.Executable()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	argstring := ""
 	for _, arg := range args {
 		argstring = argstring + " '" + arg + "'"
 	}
 	cmd := exec.Command("/usr/bin/env", "bash", "-c", command+argstring)
-	cmd.Env = append(env, []string{
-		"PROGRAM=" + executable,
-		"BASH_ENV=" + envfile,
-	})
+	cmd.Env = append(env,
+		"PROGRAM="+executable,
+		"BASH_ENV="+envfile,
+	)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -51,14 +49,14 @@ type Context struct {
 	sync.Mutex
 	files []string
 	env   []string
-	fns   map[string]func([]string)
+	fns   map[string]func([]string) int
 }
 
 func NewContext() *Context {
 	return &Context{
-		files: make([]string),
-		env:   make([]string),
-		fns:   make(map[string]func([]string)),
+		files: make([]string, 0),
+		env:   make([]string, 0),
+		fns:   make(map[string]func([]string) int),
 	}
 }
 
