@@ -67,13 +67,13 @@ Now put all your Bash scripts in a directory called `bash`. The above example pr
 
 	$ go-bindata bash
 
-This will produce a `bindata.go` file that includes all of your Bash scripts. It includes a function called `Assets` that behaves like `ioutil.ReadFile` for files in your `bindata.go`. You can just pass this into the `Source` function when sourcing files. From the above example program, you'd use this line instead:
+This will produce a `bindata.go` file that includes all of your Bash scripts. It includes a function called `Asset` that behaves like `ioutil.ReadFile` for files in your `bindata.go`. You can just pass this into the `Source` function when sourcing files. From the above example program, you'd use this line instead:
 
 ```Go
 bash.Source("bash/main.bash", Asset)
 ```
 
-If you got ambitious you could also go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
+If you get ambitious you could also go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
 
 ## Motivation
 
