@@ -17,7 +17,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/dustin/go-jsonpointer"
 	"github.com/progrium/go-basher"
 )
 
@@ -57,6 +56,24 @@ main() {
 	echo "Hello world" | reverse
 }
 ```
+
+## Using go-basher with go-bindata
+
+You can bundle your Bash scripts into your Go binary using go-bindata. First install go-bindata:
+	
+	$ go get github.com/jteeuwen/go-bindata/...
+
+Now put all your Bash scripts in a directory called `bash`. The above example program would mean you'd have a `bash/main.bash` file. Run `go-bindata` on the directory:
+
+	$ go-bindata bash
+
+This will produce a `bindata.go` file that includes all of your Bash scripts. It includes a function called `Assets` that behaves like `ioutil.ReadFile` for files in your `bindata.go`. You can just pass this into the `Source` function when sourcing files. From the above example program, you'd use this line instead:
+
+```Go
+bash.Source("bash/main.bash", Asset)
+```
+
+If you got ambitious you could also go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
 
 ## Motivation
 

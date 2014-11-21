@@ -46,7 +46,7 @@ func main() {
 	bash.ExportFunc("reverse", reverse)
 	bash.HandleFuncs(os.Args)
 
-	bash.Source("bash/example.bash", nil)
+	bash.Source("bash/example.bash", Asset)
 	status, err := bash.Run("main", os.Args[1:])
 	assert(err)
 	os.Exit(status)
