@@ -37,8 +37,8 @@ func main() {
 	bash, _ := basher.NewContext("/bin/bash", false)
 	bash.ExportFunc("reverse", reverse)
 	bash.HandleFuncs(os.Args)
-	bash.Source("main.bash", nil)
 
+	bash.Source("main.bash", nil)
 	status, err := bash.Run("main", os.Args[1:])
 	if err != nil {
 		log.Fatal(err)
