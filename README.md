@@ -20,15 +20,11 @@ import (
 	"github.com/progrium/go-basher"
 )
 
-func assert(err error) {
+func reverse(args []string) int {
+	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func reverse(args []string) int {
-	bytes, err := ioutil.ReadAll(os.Stdin)
-	assert(err)
 	runes := []rune(strings.Trim(string(bytes), "\n"))
 	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
 		runes[i], runes[j] = runes[j], runes[i]
@@ -42,9 +38,11 @@ func main() {
 	bash.ExportFunc("reverse", reverse)
 	bash.HandleFuncs(os.Args)
 	bash.Source("main.bash", nil)
-	
+
 	status, err := bash.Run("main", os.Args[1:])
-	assert(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 	os.Exit(status)
 }
 ```
