@@ -4,6 +4,59 @@ An API for creating Bash environments, exporting Go functions in them as Bash fu
 
 [![Build Status](https://travis-ci.org/progrium/go-basher.png)](https://travis-ci.org/progrium/go-basher) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
 
+## Using go-basher
+
+Here we have a simple Go program that defines a `reverse` function, creates a Bash environment sourcing `main.bash` and then runs `main` in that environment. 
+
+```
+package main
+
+import (
+	"os"
+	"io/ioutil"
+	"log"
+	"strings"
+
+	"github.com/dustin/go-jsonpointer"
+	"github.com/progrium/go-basher"
+)
+
+func assert(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func reverse(args []string) int {
+	bytes, err := ioutil.ReadAll(os.Stdin)
+	assert(err)
+	runes := []rune(strings.Trim(string(bytes), "\n"))
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	println(string(runes))
+	return 0
+}
+
+func main() {
+	bash, _ := basher.NewContext("/bin/bash", false)
+	bash.ExportFunc("reverse", reverse)
+	bash.HandleFuncs(os.Args)
+
+	bash.Source("main.bash", nil)
+	status, err := bash.Run("main", os.Args[1:])
+	assert(err)
+	os.Exit(status)
+}
+```
+
+Here is our `main.bash` file, the actual heart of the program:
+
+```
+main() {
+	echo "Hello world" | reverse
+}
+```
 
 ## Motivation
 
