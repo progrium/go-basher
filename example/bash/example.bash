@@ -1,4 +1,3 @@
-
 set -eo pipefail
 
 hello-bash() {
@@ -7,8 +6,6 @@ hello-bash() {
 
 main() {
 	echo "Arguments:" "$@"
-	hello-bash
-	hello-go
 	hello-bash | reverse
-	curl -s https://api.github.com/repos/progrium/go-basher | jpointer /owner/login
+	curl -s https://api.github.com/repos/progrium/go-basher | json-pointer /owner/login
 }

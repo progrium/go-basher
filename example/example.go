@@ -17,12 +17,7 @@ func assert(err error) {
 	}
 }
 
-func hellogo(args []string) int {
-	print("Hello world from Go\n")
-	return 0
-}
-
-func jpointer(args []string) int {
+func jsonPointer(args []string) int {
 	if len(args) == 0 {
 		return 3
 	}
@@ -46,13 +41,12 @@ func reverse(args []string) int {
 }
 
 func main() {
-	bash := basher.NewContext()
-	bash.ExportFunc("hello-go", hellogo)
-	bash.ExportFunc("jpointer", jpointer)
+	bash, _ := basher.NewContext("/bin/bash", false)
+	bash.ExportFunc("json-pointer", jsonPointer)
 	bash.ExportFunc("reverse", reverse)
 	bash.HandleFuncs(os.Args)
 
-	bash.Source("./example.bash")
+	bash.Source("bash/example.bash", nil)
 	status, err := bash.Run("main", os.Args[1:])
 	assert(err)
 	os.Exit(status)

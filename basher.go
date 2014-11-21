@@ -1,3 +1,4 @@
+// Package basher provides an API for running and integrating with Bash from Go
 package basher
 
 import (
@@ -25,76 +26,118 @@ func exitStatus(err error) (int, error) {
 	return 0, nil
 }
 
-func RunBash(envfile string, command string, args []string, env []string) (int, error) {
-	executable, err := osext.Executable()
-	if err != nil {
-		return 0, err
-	}
-	argstring := ""
-	for _, arg := range args {
-		argstring = argstring + " '" + arg + "'"
-	}
-	cmd := exec.Command("/usr/bin/env", "bash", "-c", command+argstring)
-	cmd.Env = append(env,
-		"PROGRAM="+executable,
-		"BASH_ENV="+envfile,
-	)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return exitStatus(cmd.Run())
-}
-
+// A Context is an instance of a Bash interpreter and environment, including
+// sourced scripts, environment variables, and embedded Go functions
 type Context struct {
 	sync.Mutex
-	files []string
-	env   []string
-	fns   map[string]func([]string) int
+
+	// Debug simply leaves the generated BASH_ENV file produced
+	// from each Run call of this Context for debugging.
+	Debug bool
+
+	// BashPath is the path to the Bash executable to be used by Run
+	BashPath string
+
+	// SelfPath is set by NewContext to be the current executable path.
+	// It's used to call back into the calling Go process to run exported
+	// functions.
+	SelfPath string
+
+	// The io.Reader given to Bash for STDIN
+	Stdin io.Reader
+
+	// The io.Writer given to Bash for STDOUT
+	Stdout io.Writer
+
+	// The io.Writer given to Bash for STDERR
+	Stderr io.Writer
+
+	// Exiter is os.Exit by default. If you want to handle exits from
+	// HandleFuncs yourself, you can use this.
+	Exiter func(int)
+
+	vars    []string
+	scripts [][]byte
+	funcs   map[string]func([]string) int
 }
 
-func NewContext() *Context {
-	return &Context{
-		files: make([]string, 0),
-		env:   make([]string, 0),
-		fns:   make(map[string]func([]string) int),
+// Creates and initializes a new Context that will use the given Bash executable.
+// The debug mode will leave the produced temporary BASH_ENV file for inspection.
+func NewContext(bashpath string, debug bool) (*Context, error) {
+	executable, err := osext.Executable()
+	if err != nil {
+		return nil, err
 	}
+	return &Context{
+		Debug:    debug,
+		BashPath: bashpath,
+		SelfPath: executable,
+		Stdin:    os.Stdin,
+		Stdout:   os.Stdout,
+		Stderr:   os.Stderr,
+		Exiter:   os.Exit,
+		scripts:  make([][]byte, 0),
+		vars:     make([]string, 0),
+		funcs:    make(map[string]func([]string) int),
+	}, nil
 }
 
+// Copies the current environment variables into the Context
 func (c *Context) CopyEnv() {
 	c.Lock()
 	defer c.Unlock()
-	c.env = append(c.env, os.Environ()...)
+	c.vars = append(c.vars, os.Environ()...)
 }
 
-func (c *Context) Source(filename string) {
+// Adds a shell script to the Context environment. The loader argument can be nil
+// which means it will use ioutil.Readfile and load from disk, but it exists so you
+// can use the Asset function produced by go-bindata when including script files in
+// your Go binary. Calls to Source adds files to the environment in order.
+func (c *Context) Source(filepath string, loader func(string) ([]byte, error)) error {
+	if loader == nil {
+		loader = ioutil.ReadFile
+	}
+	data, err := loader(filepath)
+	if err != nil {
+		return err
+	}
 	c.Lock()
 	defer c.Unlock()
-	c.files = append(c.files, filename)
+	c.scripts = append(c.scripts, data)
+	return nil
 }
 
+// Adds an environment variable to the Context
 func (c *Context) Export(name string, value string) {
 	c.Lock()
 	defer c.Unlock()
-	c.env = append(c.env, name+"="+value)
+	c.vars = append(c.vars, name+"="+value)
 }
 
+// Registers a function with the Context that will produce a Bash function in the environment
+// that calls back into your executable triggering the function defined as fn.
 func (c *Context) ExportFunc(name string, fn func([]string) int) {
 	c.Lock()
 	defer c.Unlock()
-	c.fns[name] = fn
+	c.funcs[name] = fn
 }
 
+// Expects your os.Args to parse and handle any callbacks to Go functions registered with
+// ExportFunc. You normally call this at the beginning of your program. If a registered
+// function is found and handled, HandleFuncs will exit with the appropriate exit code for you.
 func (c *Context) HandleFuncs(args []string) {
 	for i, arg := range args {
 		if arg == "::" && len(args) > i+1 {
 			c.Lock()
 			defer c.Unlock()
-			for cmd := range c.fns {
+			for cmd := range c.funcs {
 				if cmd == args[i+1] {
-					os.Exit(c.fns[cmd](args[i+2:]))
+					c.Exiter(c.funcs[cmd](args[i+2:]))
+					return
 				}
 			}
-			os.Exit(6)
+			c.Exiter(6)
+			return
 		}
 	}
 }
@@ -105,24 +148,27 @@ func (c *Context) buildEnvfile() (string, error) {
 		return "", err
 	}
 	defer file.Close()
-	for _, filename := range c.files {
-		f, err := os.Open(filename)
-		if err != nil {
-			return "", err
-		}
-		defer f.Close()
-		_, err = io.Copy(file, f)
-		if err != nil {
-			return "", err
-		}
-		file.Write([]byte("\n"))
+	// variables
+	file.Write([]byte("export PROGRAM=" + c.SelfPath + "\n"))
+	for _, kvp := range c.vars {
+		file.Write([]byte("export " + kvp + "\n"))
 	}
-	for cmd := range c.fns {
+	// functions
+	for cmd := range c.funcs {
 		file.Write([]byte(cmd + "() { $PROGRAM :: " + cmd + " \"$@\"; }\n"))
+	}
+	// scripts
+	for _, data := range c.scripts {
+		file.Write(append(data, '\n'))
 	}
 	return file.Name(), nil
 }
 
+// Runs a command in Bash from this Context. With each call, a temporary file
+// is generated used as BASH_ENV when calling Bash that includes all variables,
+// sourced scripts, and exported functions from the Context. Standard I/O by
+// default is attached to the calling process I/O. You can change this by setting
+// the Stdout, Stderr, Stdin variables of the Context.
 func (c *Context) Run(command string, args []string) (int, error) {
 	c.Lock()
 	defer c.Unlock()
@@ -130,6 +176,17 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer os.Remove(envfile)
-	return RunBash(envfile, command, args, c.env)
+	if !c.Debug {
+		defer os.Remove(envfile)
+	}
+	argstring := ""
+	for _, arg := range args {
+		argstring = argstring + " '" + arg + "'"
+	}
+	cmd := exec.Command(c.BashPath, "-c", command+argstring)
+	cmd.Env = []string{"BASH_ENV=" + envfile}
+	cmd.Stdin = c.Stdin
+	cmd.Stdout = c.Stdout
+	cmd.Stderr = c.Stderr
+	return exitStatus(cmd.Run())
 }
