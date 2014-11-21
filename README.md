@@ -1,6 +1,6 @@
 # go-basher
 
-An API for creating Bash environments, exporting Go functions in them as Bash functions, and running commands in that Bash environment. Combined with a tool like [go-bindata](https://github.com/jteeuwen/go-bindata), you can write programs that are part written in Go and part written in Bash that can be distributed as standalone binaries.
+A Go library for creating Bash environments, exporting Go functions in them as Bash functions, and running commands in that Bash environment. Combined with a tool like [go-bindata](https://github.com/jteeuwen/go-bindata), you can write programs that are part written in Go and part written in Bash that can be distributed as standalone binaries.
 
 [![Build Status](https://travis-ci.org/progrium/go-basher.png)](https://travis-ci.org/progrium/go-basher) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
 
@@ -41,8 +41,8 @@ func main() {
 	bash, _ := basher.NewContext("/bin/bash", false)
 	bash.ExportFunc("reverse", reverse)
 	bash.HandleFuncs(os.Args)
-
 	bash.Source("main.bash", nil)
+	
 	status, err := bash.Run("main", os.Args[1:])
 	assert(err)
 	os.Exit(status)
@@ -59,7 +59,7 @@ main() {
 
 ## Using go-basher with go-bindata
 
-You can bundle your Bash scripts into your Go binary using go-bindata. First install go-bindata:
+You can bundle your Bash scripts into your Go binary using [go-bindata](https://github.com/jteeuwen/go-bindata). First install go-bindata:
 	
 	$ go get github.com/jteeuwen/go-bindata/...
 
@@ -73,7 +73,7 @@ This will produce a `bindata.go` file that includes all of your Bash scripts. It
 bash.Source("bash/main.bash", Asset)
 ```
 
-If you get ambitious you could also go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
+If you get ambitious you could also use go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
 
 ## Motivation
 
@@ -81,7 +81,7 @@ Go is a great compiled systems language, but it can still be faster to write and
 
 Take a common task like making an HTTP request for JSON data. Parsing JSON is easy in Go, but without depending on a tool like `jq` it is not even worth trying in Bash. And some formats like YAML don't even have a good `jq` equivalent. Whereas making an HTTP request in Go in the *simplest* case is going to be 6+ lines, as opposed to Bash where you can use `curl` in one line. If we write our JSON parser in Go and fetch the HTTP doc with `curl`, we can express printing a field from a remote JSON object in one line:
 
-	curl https://api.github.com/users/progrium | parse-user-field email
+	curl -s https://api.github.com/users/progrium | parse-user-field email
 
 In this case, the command `parse-user-field` is an app specific function defined in your Go program.
 
