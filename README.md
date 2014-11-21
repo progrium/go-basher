@@ -8,7 +8,7 @@ An API for creating Bash environments, exporting Go functions in them as Bash fu
 
 Here we have a simple Go program that defines a `reverse` function, creates a Bash environment sourcing `main.bash` and then runs `main` in that environment. 
 
-```
+```Go
 package main
 
 import (
@@ -52,7 +52,7 @@ func main() {
 
 Here is our `main.bash` file, the actual heart of the program:
 
-```
+```bash
 main() {
 	echo "Hello world" | reverse
 }
