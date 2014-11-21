@@ -60,6 +60,12 @@ func NewContext() *Context {
 	}
 }
 
+func (c *Context) CopyEnv() {
+	c.Lock()
+	defer c.Unlock()
+	c.env = append(c.env, os.Environ()...)
+}
+
 func (c *Context) Source(filename string) {
 	c.Lock()
 	defer c.Unlock()
@@ -109,6 +115,7 @@ func (c *Context) buildEnvfile() (string, error) {
 		if err != nil {
 			return "", err
 		}
+		file.Write([]byte("\n"))
 	}
 	for cmd := range c.fns {
 		file.Write([]byte(cmd + "() { $PROGRAM :: " + cmd + " \"$@\"; }\n"))
