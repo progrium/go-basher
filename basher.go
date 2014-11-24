@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -149,9 +150,10 @@ func (c *Context) buildEnvfile() (string, error) {
 	}
 	defer file.Close()
 	// variables
-	file.Write([]byte("export PROGRAM=" + c.SelfPath + "\n"))
+	file.Write([]byte("export BASH_ENV=\n")) // unset for future calls to bash
+	file.Write([]byte("export PROGRAM='" + c.SelfPath + "'\n"))
 	for _, kvp := range c.vars {
-		file.Write([]byte("export " + kvp + "\n"))
+		file.Write([]byte("export " + strings.Replace(kvp, "=", "='", 1) + "'\n"))
 	}
 	// functions
 	for cmd := range c.funcs {
