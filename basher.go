@@ -4,6 +4,7 @@ package basher
 import (
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -25,6 +26,46 @@ func exitStatus(err error) (int, error) {
 		return 0, err
 	}
 	return 0, nil
+}
+
+// Application sets up a common entrypoint for a Bash application that
+// uses exported Go functions. It uses the DEBUG environment variable
+// to set debug on the Context, and SHELL for the Bash binary if it
+// includes the string "bash". You can pass a loader function to use
+// for the sourced files, and a boolean for whether or not the
+// environment should be copied into the Context process.
+func Application(
+	funcs map[string]func([]string) int,
+	scripts []string,
+	loader func(string) ([]byte, error),
+	copyEnv bool) {
+
+	var bashPath string
+	if strings.Contains(os.Getenv("SHELL"), "bash") {
+		bashPath = os.Getenv("SHELL")
+	} else {
+		bashPath = "/bin/bash"
+	}
+	bash, err := NewContext(bashPath, os.Getenv("DEBUG") != "")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for name, fn := range funcs {
+		bash.ExportFunc(name, fn)
+	}
+	bash.HandleFuncs(os.Args)
+
+	for _, script := range scripts {
+		bash.Source(script, loader)
+	}
+	if copyEnv {
+		bash.CopyEnv()
+	}
+	status, err := bash.Run("main", os.Args[1:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	os.Exit(status)
 }
 
 // A Context is an instance of a Bash interpreter and environment, including
@@ -150,14 +191,15 @@ func (c *Context) buildEnvfile() (string, error) {
 	}
 	defer file.Close()
 	// variables
-	file.Write([]byte("export BASH_ENV=\n")) // unset for future calls to bash
-	file.Write([]byte("export PROGRAM='" + c.SelfPath + "'\n"))
+	file.Write([]byte("unset BASH_ENV\n")) // unset for future calls to bash
+	file.Write([]byte("export SELF=" + os.Args[0] + "\n"))
+	file.Write([]byte("export EXECUTABLE='" + c.SelfPath + "'\n"))
 	for _, kvp := range c.vars {
 		file.Write([]byte("export " + strings.Replace(kvp, "=", "='", 1) + "'\n"))
 	}
 	// functions
 	for cmd := range c.funcs {
-		file.Write([]byte(cmd + "() { $PROGRAM :: " + cmd + " \"$@\"; }\n"))
+		file.Write([]byte(cmd + "() { $EXECUTABLE :: " + cmd + " \"$@\"; }\n"))
 	}
 	// scripts
 	for _, data := range c.scripts {
