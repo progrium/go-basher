@@ -2,7 +2,6 @@ package basher
 
 import (
 	"bytes"
-	"strconv"
 	"testing"
 )
 
@@ -16,14 +15,6 @@ var testScripts = map[string]string{
 
 func testLoader(name string) ([]byte, error) {
 	return []byte(testScripts[name]), nil
-}
-
-func exportedFunc(args []string) int {
-	status, err := strconv.Atoi(args[0])
-	if err != nil {
-		panic(err)
-	}
-	return status
 }
 
 func TestHelloStdout(t *testing.T) {
@@ -84,7 +75,9 @@ func TestEnvironment(t *testing.T) {
 
 func TestFuncCallback(t *testing.T) {
 	bash, _ := NewContext(bashpath, false)
-	bash.ExportFunc("myfunc", exportedFunc)
+	bash.ExportFunc("myfunc", func(args []string) {
+		return
+	})
 	bash.SelfPath = "/bin/echo"
 
 	var stdout bytes.Buffer
@@ -104,19 +97,20 @@ func TestFuncCallback(t *testing.T) {
 func TestFuncHandling(t *testing.T) {
 	exit := make(chan int, 1)
 	bash, _ := NewContext(bashpath, false)
-	bash.Exiter = func(code int) {
-		exit <- code
-	}
-	bash.ExportFunc("test-success", exportedFunc)
-	bash.ExportFunc("test-fail", exportedFunc)
+	bash.ExportFunc("test-success", func(args []string) {
+		exit <- 0
+	})
+	bash.ExportFunc("test-fail", func(args []string) {
+		exit <- 2
+	})
 
-	bash.HandleFuncs([]string{"thisprogram", "::", "test-success", "0"})
+	bash.HandleFuncs([]string{"thisprogram", "::", "test-success"})
 	status := <-exit
 	if status != 0 {
 		t.Fatal("non-zero exit")
 	}
 
-	bash.HandleFuncs([]string{"thisprogram", "::", "test-fail", "2"})
+	bash.HandleFuncs([]string{"thisprogram", "::", "test-fail"})
 	status = <-exit
 	if status != 2 {
 		t.Fatal("unexpected exit status:", status)

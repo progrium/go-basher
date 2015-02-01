@@ -35,7 +35,7 @@ func exitStatus(err error) (int, error) {
 // for the sourced files, and a boolean for whether or not the
 // environment should be copied into the Context process.
 func Application(
-	funcs map[string]func([]string) int,
+	funcs map[string]func([]string),
 	scripts []string,
 	loader func(string) ([]byte, error),
 	copyEnv bool) {
@@ -53,7 +53,9 @@ func Application(
 	for name, fn := range funcs {
 		bash.ExportFunc(name, fn)
 	}
-	bash.HandleFuncs(os.Args)
+	if bash.HandleFuncs(os.Args) {
+		os.Exit(0)
+	}
 
 	for _, script := range scripts {
 		bash.Source(script, loader)
@@ -94,13 +96,9 @@ type Context struct {
 	// The io.Writer given to Bash for STDERR
 	Stderr io.Writer
 
-	// Exiter is os.Exit by default. If you want to handle exits from
-	// HandleFuncs yourself, you can use this.
-	Exiter func(int)
-
 	vars    []string
 	scripts [][]byte
-	funcs   map[string]func([]string) int
+	funcs   map[string]func([]string)
 }
 
 // Creates and initializes a new Context that will use the given Bash executable.
@@ -117,10 +115,9 @@ func NewContext(bashpath string, debug bool) (*Context, error) {
 		Stdin:    os.Stdin,
 		Stdout:   os.Stdout,
 		Stderr:   os.Stderr,
-		Exiter:   os.Exit,
 		scripts:  make([][]byte, 0),
 		vars:     make([]string, 0),
-		funcs:    make(map[string]func([]string) int),
+		funcs:    make(map[string]func([]string)),
 	}, nil
 }
 
@@ -158,7 +155,7 @@ func (c *Context) Export(name string, value string) {
 
 // Registers a function with the Context that will produce a Bash function in the environment
 // that calls back into your executable triggering the function defined as fn.
-func (c *Context) ExportFunc(name string, fn func([]string) int) {
+func (c *Context) ExportFunc(name string, fn func([]string)) {
 	c.Lock()
 	defer c.Unlock()
 	c.funcs[name] = fn
@@ -167,21 +164,21 @@ func (c *Context) ExportFunc(name string, fn func([]string) int) {
 // Expects your os.Args to parse and handle any callbacks to Go functions registered with
 // ExportFunc. You normally call this at the beginning of your program. If a registered
 // function is found and handled, HandleFuncs will exit with the appropriate exit code for you.
-func (c *Context) HandleFuncs(args []string) {
+func (c *Context) HandleFuncs(args []string) bool {
 	for i, arg := range args {
 		if arg == "::" && len(args) > i+1 {
 			c.Lock()
 			defer c.Unlock()
 			for cmd := range c.funcs {
 				if cmd == args[i+1] {
-					c.Exiter(c.funcs[cmd](args[i+2:]))
-					return
+					c.funcs[cmd](args[i+2:])
+					return true
 				}
 			}
-			c.Exiter(6)
-			return
+			return false
 		}
 	}
+	return false
 }
 
 func (c *Context) buildEnvfile() (string, error) {
