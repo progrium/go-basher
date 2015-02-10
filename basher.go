@@ -41,10 +41,13 @@ func Application(
 	copyEnv bool) {
 
 	var bashPath string
-	if strings.Contains(os.Getenv("SHELL"), "bash") {
-		bashPath = os.Getenv("SHELL")
-	} else {
-		bashPath = "/bin/bash"
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		if strings.Contains(os.Getenv("SHELL"), "bash") {
+			bashPath = os.Getenv("SHELL")
+		} else {
+			bashPath = "/bin/bash"
+		}
 	}
 	bash, err := NewContext(bashPath, os.Getenv("DEBUG") != "")
 	if err != nil {
@@ -192,7 +195,8 @@ func (c *Context) buildEnvfile() (string, error) {
 	file.Write([]byte("export SELF=" + os.Args[0] + "\n"))
 	file.Write([]byte("export EXECUTABLE='" + c.SelfPath + "'\n"))
 	for _, kvp := range c.vars {
-		file.Write([]byte("export " + strings.Replace(kvp, "=", "='", 1) + "'\n"))
+		file.Write([]byte("export " + strings.Replace(
+			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1) + "'\n"))
 	}
 	// functions
 	for cmd := range c.funcs {

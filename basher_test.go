@@ -2,6 +2,7 @@ package basher
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -56,8 +57,9 @@ func TestHelloStdin(t *testing.T) {
 
 func TestEnvironment(t *testing.T) {
 	bash, _ := NewContext(bashpath, false)
+	complexString := "Andy's Laptop says, \"$X=1\""
 	bash.Source("foobar.sh", testLoader)
-	bash.Export("FOOBAR", "hello")
+	bash.Export("FOOBAR", complexString)
 
 	var stdout bytes.Buffer
 	bash.Stdout = &stdout
@@ -68,7 +70,7 @@ func TestEnvironment(t *testing.T) {
 	if status != 0 {
 		t.Fatal("non-zero exit")
 	}
-	if stdout.String() != "hello\n" {
+	if strings.Trim(stdout.String(), "\n") != complexString {
 		t.Fatal("unexpected stdout:", stdout.String())
 	}
 }
