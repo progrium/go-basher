@@ -11,7 +11,7 @@ import (
 	"sync"
 	"syscall"
 
-	"bitbucket.org/kardianos/osext"
+	"github.com/kardianos/osext"
 )
 
 func exitStatus(err error) (int, error) {
