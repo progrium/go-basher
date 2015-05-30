@@ -20,7 +20,7 @@ import (
 	"github.com/progrium/go-basher"
 )
 
-func reverse(args []string) int {
+func reverse(args []string) {
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
@@ -30,13 +30,14 @@ func reverse(args []string) int {
 		runes[i], runes[j] = runes[j], runes[i]
 	}
 	println(string(runes))
-	return 0
 }
 
 func main() {
 	bash, _ := basher.NewContext("/bin/bash", false)
 	bash.ExportFunc("reverse", reverse)
-	bash.HandleFuncs(os.Args)
+	if bash.HandleFuncs(os.Args) {
+		os.Exit(0)
+	}
 
 	bash.Source("main.bash", nil)
 	status, err := bash.Run("main", os.Args[1:])

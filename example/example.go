@@ -17,19 +17,18 @@ func assert(err error) {
 	}
 }
 
-func jsonPointer(args []string) int {
+func jsonPointer(args []string) {
 	if len(args) == 0 {
-		return 3
+		os.Exit(3)
 	}
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	assert(err)
 	var o map[string]interface{}
 	assert(json.Unmarshal(bytes, &o))
 	println(jsonpointer.Get(o, args[0]).(string))
-	return 0
 }
 
-func reverse(args []string) int {
+func reverse(args []string) {
 	bytes, err := ioutil.ReadAll(os.Stdin)
 	assert(err)
 	runes := []rune(strings.Trim(string(bytes), "\n"))
@@ -37,14 +36,15 @@ func reverse(args []string) int {
 		runes[i], runes[j] = runes[j], runes[i]
 	}
 	println(string(runes))
-	return 0
 }
 
 func main() {
 	bash, _ := basher.NewContext("/bin/bash", false)
 	bash.ExportFunc("json-pointer", jsonPointer)
 	bash.ExportFunc("reverse", reverse)
-	bash.HandleFuncs(os.Args)
+	if bash.HandleFuncs(os.Args) {
+		os.Exit(0)
+	}
 
 	bash.Source("bash/example.bash", Asset)
 	status, err := bash.Run("main", os.Args[1:])
