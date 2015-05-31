@@ -91,7 +91,7 @@ func TestFuncCallback(t *testing.T) {
 	if status != 0 {
 		t.Fatal("non-zero exit")
 	}
-	if stdout.String() != ":: myfunc abc 123\n" {
+	if stdout.String() != "::: myfunc abc 123\n" {
 		t.Fatal("unexpected stdout:", stdout.String())
 	}
 }
@@ -106,13 +106,13 @@ func TestFuncHandling(t *testing.T) {
 		exit <- 2
 	})
 
-	bash.HandleFuncs([]string{"thisprogram", "::", "test-success"})
+	bash.HandleFuncs([]string{"thisprogram", ":::", "test-success"})
 	status := <-exit
 	if status != 0 {
 		t.Fatal("non-zero exit")
 	}
 
-	bash.HandleFuncs([]string{"thisprogram", "::", "test-fail"})
+	bash.HandleFuncs([]string{"thisprogram", ":::", "test-fail"})
 	status = <-exit
 	if status != 2 {
 		t.Fatal("unexpected exit status:", status)

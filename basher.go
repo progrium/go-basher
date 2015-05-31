@@ -173,7 +173,7 @@ func (c *Context) ExportFunc(name string, fn func([]string)) {
 // function is found and handled, HandleFuncs will exit with the appropriate exit code for you.
 func (c *Context) HandleFuncs(args []string) bool {
 	for i, arg := range args {
-		if arg == "::" && len(args) > i+1 {
+		if arg == ":::" && len(args) > i+1 {
 			c.Lock()
 			defer c.Unlock()
 			for cmd := range c.funcs {
@@ -197,14 +197,14 @@ func (c *Context) buildEnvfile() (string, error) {
 	// variables
 	file.Write([]byte("unset BASH_ENV\n")) // unset for future calls to bash
 	file.Write([]byte("export SELF=" + os.Args[0] + "\n"))
-	file.Write([]byte("export EXECUTABLE='" + c.SelfPath + "'\n"))
+	file.Write([]byte("export SELF_EXECUTABLE='" + c.SelfPath + "'\n"))
 	for _, kvp := range c.vars {
 		file.Write([]byte("export " + strings.Replace(
 			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1) + "'\n"))
 	}
 	// functions
 	for cmd := range c.funcs {
-		file.Write([]byte(cmd + "() { $EXECUTABLE :: " + cmd + " \"$@\"; }\n"))
+		file.Write([]byte(cmd + "() { $SELF_EXECUTABLE ::: " + cmd + " \"$@\"; }\n"))
 	}
 	// scripts
 	for _, data := range c.scripts {
