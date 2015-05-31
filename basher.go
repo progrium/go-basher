@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/kardianos/osext"
+	"github.com/mitchellh/go-homedir"
 )
 
 func exitStatus(err error) (int, error) {
@@ -40,13 +41,16 @@ func Application(
 	loader func(string) ([]byte, error),
 	copyEnv bool) {
 
-	var bashPath string
-	bashPath, err := exec.LookPath("bash")
+	bashDir, err := homedir.Expand("~/.basher")
 	if err != nil {
-		if strings.Contains(os.Getenv("SHELL"), "bash") {
-			bashPath = os.Getenv("SHELL")
-		} else {
-			bashPath = "/bin/bash"
+		log.Fatal(err, "1")
+	}
+
+	bashPath := bashDir + "/bash"
+	if _, err := os.Stat(bashPath); os.IsNotExist(err) {
+		err = RestoreAsset(bashDir, "bash")
+		if err != nil {
+			log.Fatal(err, "1")
 		}
 	}
 	bash, err := NewContext(bashPath, os.Getenv("DEBUG") != "")
