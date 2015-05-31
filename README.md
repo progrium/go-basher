@@ -2,11 +2,11 @@
 
 A Go library for creating Bash environments, exporting Go functions in them as Bash functions, and running commands in that Bash environment. Combined with a tool like [go-bindata](https://github.com/jteeuwen/go-bindata), you can write programs that are part written in Go and part written in Bash that can be distributed as standalone binaries.
 
-[![Build Status](https://travis-ci.org/progrium/go-basher.png)](https://travis-ci.org/progrium/go-basher) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
+[![Circle CI](https://circleci.com/gh/progrium/go-basher.svg?style=shield)](https://circleci.com/gh/progrium/go-basher) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
 
 ## Using go-basher
 
-Here we have a simple Go program that defines a `reverse` function, creates a Bash environment sourcing `main.bash` and then runs `main` in that environment. 
+Here we have a simple Go program that defines a `reverse` function, creates a Bash environment sourcing `main.bash` and then runs `main` in that environment.
 
 ```Go
 package main
@@ -59,7 +59,7 @@ main() {
 ## Using go-basher with go-bindata
 
 You can bundle your Bash scripts into your Go binary using [go-bindata](https://github.com/jteeuwen/go-bindata). First install go-bindata:
-	
+
 	$ go get github.com/jteeuwen/go-bindata/...
 
 Now put all your Bash scripts in a directory called `bash`. The above example program would mean you'd have a `bash/main.bash` file. Run `go-bindata` on the directory:
