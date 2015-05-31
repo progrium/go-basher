@@ -4,8 +4,8 @@ dependencies:
   override:
     - make build
   post:
-    - tar -czvf go-workspace.tgz -C ~/.go_workspace .
-    - cp go-workspace.tgz $CIRCLE_ARTIFACTS/go-workspace.tgz
+    - tar -czvf /tmp/go-workspace.tgz -C ~/.go_workspace .
+    - cp /tmp/go-workspace.tgz $CIRCLE_ARTIFACTS/go-workspace.tgz
 
 test:
   override:

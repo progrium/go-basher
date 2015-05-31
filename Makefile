@@ -14,6 +14,7 @@ deps:
 	go get -u github.com/progrium/gh-release/...
 
 bash:
+	# Don't run if you don't have to. Adds several megs to repo with every commit.
 	rm -rf $(BASH_DIR) && mkdir -p $(BASH_DIR)/linux $(BASH_DIR)/osx
 	curl -Ls https://github.com/robxu9/bash-static/releases/download/4.3.30/bash-linux \
 		> $(BASH_DIR)/linux/bash
@@ -32,5 +33,5 @@ circleci:
 
 release:
 	rm -rf release && mkdir release
-	mv go-workspace.tgz release/$(NAME)_$(VERSION)_workspace.tgz
+	mv /tmp/go-workspace.tgz release/$(NAME)_$(VERSION)_workspace.tgz
 	gh-release create $(OWNER)/$(NAME) $(VERSION) $(shell git rev-parse --abbrev-ref HEAD) $(VERSION)
