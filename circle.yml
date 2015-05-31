@@ -1,0 +1,18 @@
+dependencies:
+  pre:
+    - make circleci
+  override:
+    - make build
+  post:
+    - tar -czvf go-workspace.tgz -C ~/.go_workspace .
+    - cp go-workspace.tgz $CIRCLE_ARTIFACTS/go-workspace.tgz
+
+test:
+  override:
+    - make test
+
+deployment:
+  release:
+    branch: release
+    commands:
+      - make release
