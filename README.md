@@ -71,7 +71,29 @@ This will produce a `bindata.go` file that includes all of your Bash scripts. It
 bash.Source("bash/main.bash", Asset)
 ```
 
-If you get ambitious you could also use go-bindata to pack a static version of the Bash binary into your Go binary. Crazy, but cool?
+Or there is a helper function: `Application()` which can replace the whole main function:
+```Go
+	basher.Application(
+		map[string]func([]string){
+			"reverse":      reverse,
+			"json-pointer": jsonPointer,
+		}, []string{
+			"bash/main.bash",
+		},
+		Asset,
+		true,
+	)
+```
+
+## Batteries included, but replaceable
+
+Did you already hear that term? Sometimes Bash binary is missing, for example when using alpine linux or busybox. Or sometimes its not the correct version. Like OSX ships with Bash 3.x which misses a lot of usefull features. Or you want to make sure to avoid shellshock attack.
+
+For those reasons static versions of Bash binaries are included for linux and darwin. Statically compiled bash-4.3.30 is released on github: https://github.com/robxu9/bash-static. These are then turned into go code, with go-bindata: bindata_linux.go and bindata_darwin.go.
+
+When you use the `basher.Application()` function, the built in Bash binary will be extracted into the `~/.basher/` dir.
+
+When you use the `basher.NewContext()` function, you have to specify the path to Bash.
 
 ## Motivation
 
