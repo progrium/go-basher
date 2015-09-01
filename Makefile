@@ -1,17 +1,15 @@
 NAME=go-basher
 OWNER=progrium
 BASH_DIR=.bash
-VERSION=v2
 
 test:
-	go test -v .
+	go test -v
 
 build:
 	go install || true
 
 deps:
 	go get -u github.com/jteeuwen/go-bindata/...
-	go get -u github.com/progrium/gh-release/...
 
 bash:
 	# Don't run if you don't have to. Adds several megs to repo with every commit.
@@ -30,8 +28,3 @@ circleci:
 		&& mkdir -p /home/ubuntu/.go_workspace/src/github.com/$(OWNER) \
 		&& mv $(NAME) /home/ubuntu/.go_workspace/src/github.com/$(OWNER)/$(NAME) \
 		&& ln -s /home/ubuntu/.go_workspace/src/github.com/$(OWNER)/$(NAME) $(NAME)
-
-release:
-	rm -rf release && mkdir release
-	mv /tmp/go-workspace.tgz release/$(NAME)_$(VERSION)_workspace.tgz
-	gh-release create $(OWNER)/$(NAME) $(VERSION) $(shell git rev-parse --abbrev-ref HEAD) $(VERSION)

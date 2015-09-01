@@ -9,10 +9,5 @@ dependencies:
 
 test:
   override:
-    - make test
-
-deployment:
-  release:
-    branch: release
-    commands:
-      - make release
+    - go get -d -t
+    - go test -v
