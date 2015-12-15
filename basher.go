@@ -242,7 +242,10 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	cmd.Stdin = c.Stdin
 	cmd.Stdout = c.Stdout
 	cmd.Stderr = c.Stderr
-	cmd.Start()
+	if err2 := cmd.Start(); err2 != nil {
+		return 0, err2
+	}
+
 	go func() {
 		for sig := range signals {
 			cmd.Process.Signal(sig)
