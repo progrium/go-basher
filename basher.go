@@ -231,7 +231,7 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	}
 	argstring := ""
 	for _, arg := range args {
-		argstring = argstring + " '" + arg + "'"
+		argstring = argstring + " '" + strings.Replace(arg, "'", "'\\''", -1) + "'"
 	}
 
 	signals := make(chan os.Signal, 1)
