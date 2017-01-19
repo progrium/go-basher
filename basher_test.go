@@ -11,6 +11,7 @@ var bashpath = "/bin/bash"
 var testScripts = map[string]string{
 	"hello.sh":  `main() { echo "hello"; }`,
 	"cat.sh":    `main() { cat; }`,
+	"printf.sh": `main() { printf "arg: <%s>" "$@"; }`,
 	"foobar.sh": `main() { echo $FOOBAR; }`,
 }
 
@@ -116,5 +117,24 @@ func TestFuncHandling(t *testing.T) {
 	status = <-exit
 	if status != 2 {
 		t.Fatal("unexpected exit status:", status)
+	}
+}
+
+func TestOddArgs(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("printf.sh", testLoader)
+
+	var stdout bytes.Buffer
+	bash.Stdout = &stdout
+	status, err := bash.Run("main", []string{"hel\n\\'lo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatal("non-zero exit")
+	}
+
+	if stdout.String() != "arg: <hel\n\\'lo>" {
+		t.Fatal("unexpected stdout:", stdout.String())
 	}
 }
