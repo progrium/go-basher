@@ -66,18 +66,20 @@ Now put all your Bash scripts in a directory called `bash`. The above example pr
 
 	$ go-bindata bash
 
-This will produce a `bindata.go` file that includes all of your Bash scripts. It includes a function called `Asset` that behaves like `ioutil.ReadFile` for files in your `bindata.go`. You can just pass this into the `Source` function when sourcing files. From the above example program, you'd use this line instead:
+This will produce a `bindata.go` file that includes all of your Bash scripts.
 
-```Go
-bash.Source("bash/main.bash", Asset)
-```
+> `bindata.go` includes a function called `Asset` that behaves like `ioutil.ReadFile` for files in your `bindata.go`. 
 
-Or there is a helper function: `Application()` which can replace the whole main function:
+Here's how you embed it into the above example program:
+
+* copy/paste it's import-statements and functions to your application code
+* method A: change `bash.Source("bash/main.bash", nil)` into `bash.Source("bash/main.bash, Asset)`
+* method B: replace all code in the `main()`-function with the `Application()`-helper function (see below)
+
 ```Go
 	basher.Application(
 		map[string]func([]string){
 			"reverse":      reverse,
-			"json-pointer": jsonPointer,
 		}, []string{
 			"bash/main.bash",
 		},
