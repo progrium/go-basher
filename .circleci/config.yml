@@ -7,8 +7,6 @@ jobs:
     steps:
       - checkout
       - run: |
-          make circleci
-      - run: |
           make build
       - run: |
           go get -d -t
