@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    working_directory: ~/progrium/go-basher
+    parallelism: 1
+    steps:
+      - checkout
+      - run: |
+          make build
+      - run: |
+          go get -d -t
+          go test -v

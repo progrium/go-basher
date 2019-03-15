@@ -96,7 +96,9 @@ For those reasons static versions of Bash binaries are included for linux and da
 
 When you use the `basher.Application()` function, the built in Bash binary will be extracted into the `~/.basher/` dir.
 
-When you use the `basher.NewContext()` function, you have to specify the path to Bash.
+When you use the `basher.ApplicationWithPath()` function, you will need to specify a bash path with the same setup guarantees as `basher.Application()`.
+
+When you use the `basher.NewContext()` function, you have to specify the path to Bash and will have complete freedom to modify the context at will.
 
 ## Motivation
 
