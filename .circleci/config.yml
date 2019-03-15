@@ -1,0 +1,15 @@
+version: 2
+jobs:
+  build:
+    machine: true
+    working_directory: ~/progrium/go-basher
+    parallelism: 4
+    steps:
+      - checkout
+      - run: |
+          make circleci
+      - run: |
+          make build
+      - run: |
+          go get -d -t
+          go test -v
