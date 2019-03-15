@@ -54,6 +54,19 @@ func Application(
 			log.Fatal(err, "1")
 		}
 	}
+
+	ApplicationWithPath(funcs, scripts, loader, copyEnv, bashPath)
+}
+
+// ApplicationWithPath functions as Application does while also
+// allowing the developer to modify the specified bashPath.
+func ApplicationWithPath(
+	funcs map[string]func([]string),
+	scripts []string,
+	loader func(string) ([]byte, error),
+	copyEnv bool,
+	bashPath string) {
+
 	bash, err := NewContext(bashPath, os.Getenv("DEBUG") != "")
 	if err != nil {
 		log.Fatal(err)
