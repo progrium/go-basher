@@ -149,7 +149,7 @@ func (c *Context) CopyEnv() {
 	c.vars = append(c.vars, os.Environ()...)
 }
 
-// Adds a shell script to the Context environment. The loader argument can be nil
+// Source adds a shell script to the Context environment. The loader argument can be nil
 // which means it will use ioutil.Readfile and load from disk, but it exists so you
 // can use the Asset function produced by go-bindata when including script files in
 // your Go binary. Calls to Source adds files to the environment in order.
@@ -167,7 +167,7 @@ func (c *Context) Source(filepath string, loader func(string) ([]byte, error)) e
 	return nil
 }
 
-// Adds an environment variable to the Context
+// Export adds an environment variable to the Context
 func (c *Context) Export(name string, value string) {
 	c.Lock()
 	defer c.Unlock()
