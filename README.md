@@ -92,7 +92,7 @@ Here's how you embed it into the above example program:
 
 Did you already hear that term? Sometimes Bash binary is missing, for example when using alpine linux or busybox. Or sometimes its not the correct version. Like OSX ships with Bash 3.x which misses a lot of usefull features. Or you want to make sure to avoid shellshock attack.
 
-For those reasons static versions of Bash binaries are included for linux and darwin. Statically compiled bash-4.3.30 is released on github: https://github.com/robxu9/bash-static. These are then turned into go code, with go-bindata: bindata_linux.go and bindata_darwin.go.
+For those reasons static versions of Bash binaries are included for linux and darwin. Statically linked bash binaries are released at: https://github.com/robxu9/bash-static. These are then turned into go code, with go-bindata: bindata_linux.go and bindata_darwin.go.
 
 When you use the `basher.Application()` function, the built in Bash binary will be extracted into the `~/.basher/` dir.
 
