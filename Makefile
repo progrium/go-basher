@@ -25,7 +25,7 @@ bash:
 	chmod +x $(BASH_DIR)/*/bash
 
 	# if upx is present, compress bash binaries
-	if [ `command -v upx` ]; then upx --8mib-ram --best --brute --ultra-brute -9 $(BASH_DIR)/*/bash; fi
+	if [ `command -v upx` ]; then upx --8mib-ram --best --ultra-brute $(BASH_DIR)/*/bash; fi
 
 	go-bindata -tags=linux -o=bash_linux.go -prefix=$(BASH_DIR)/linux -pkg=basher $(BASH_DIR)/linux
 	go-bindata -tags=darwin -o=bash_darwin.go -prefix=$(BASH_DIR)/osx -pkg=basher $(BASH_DIR)/osx
