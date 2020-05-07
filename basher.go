@@ -213,6 +213,11 @@ func (c *Context) buildEnvfile() (string, error) {
 	file.Write([]byte("export SELF=" + os.Args[0] + "\n"))
 	file.Write([]byte("export SELF_EXECUTABLE='" + c.SelfPath + "'\n"))
 	for _, kvp := range c.vars {
+		pair := strings.SplitN(kvp, "=", 2)
+		if len(pair) != 2 || strings.TrimSpace(pair[0]) == "" {
+			continue
+		}
+
 		file.Write([]byte("export " + strings.Replace(
 			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1) + "'\n"))
 	}
