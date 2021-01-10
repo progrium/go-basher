@@ -138,3 +138,24 @@ func TestOddArgs(t *testing.T) {
 		t.Fatal("unexpected stdout:", stdout.String())
 	}
 }
+
+func TestIsBashFunc(t *testing.T) {
+	if isBashFunc("", "") {
+		t.Fatal("empty string is not a bash func")
+	}
+
+	if isBashFunc("key", "value") {
+		t.Fatal("key=value is not a bash func")
+	}
+
+	if isBashFunc("BASH_FUNC_readlinkf", "value") {
+		t.Fatal("key does not end with %%")
+	}
+
+	if isBashFunc("BASH_FUNC_readlinkf%%", "value") {
+		t.Fatal("value does not begin with ()")
+	}
+	if !isBashFunc("BASH_FUNC_readlinkf%%", "() { true }") {
+		t.Fatal("bash func should be detected")
+	}
+}
