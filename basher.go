@@ -2,6 +2,7 @@
 package basher
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -223,6 +224,14 @@ func (c *Context) buildEnvfile() (string, error) {
 			continue
 		}
 
+		if isBashFunc(pair[0], pair[1]) {
+			bash_function_name := strings.TrimPrefix(pair[0], "BASH_FUNC_")
+			bash_function_name = strings.TrimSuffix(bash_function_name, "%%")
+			file.Write([]byte(fmt.Sprintf("%s%s\n", bash_function_name, pair[1])))
+			file.Write([]byte(fmt.Sprintf("export -f %s\n", bash_function_name)))
+			continue
+		}
+
 		file.Write([]byte("export " + strings.Replace(
 			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1) + "'\n"))
 	}
@@ -235,6 +244,10 @@ func (c *Context) buildEnvfile() (string, error) {
 		file.Write(append(data, '\n'))
 	}
 	return file.Name(), nil
+}
+
+func isBashFunc(key string, value string) bool {
+	return strings.HasPrefix(key, "BASH_FUNC_") && strings.HasPrefix(value, "()")
 }
 
 // Runs a command in Bash from this Context. With each call, a temporary file
