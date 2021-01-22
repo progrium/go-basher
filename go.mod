@@ -1,4 +1,4 @@
-module github.com/progrium/go-basher
+module github.com/progrium/go-basher/v5
 
 go 1.15
 
