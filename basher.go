@@ -85,7 +85,9 @@ func ApplicationWithPath(
 	}
 
 	for _, script := range scripts {
-		bash.Source(script, loader)
+		if err := bash.Source(script, loader); err != nil {
+			log.Fatal(err)
+		}
 	}
 	if copyEnv {
 		bash.CopyEnv()
