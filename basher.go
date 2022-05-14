@@ -274,6 +274,7 @@ func (c *Context) Run(command string, args []string) (int, error) {
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals)
+	signal.Ignore(syscall.SIGURG)
 
 	cmd := exec.Command(c.BashPath, "-c", command+argstring)
 	cmd.Env = []string{"BASH_ENV=" + envfile}
