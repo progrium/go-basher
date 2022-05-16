@@ -94,7 +94,14 @@ func ApplicationWithPath(
 	}
 	status, err := bash.Run("main", os.Args[1:])
 	if err != nil {
-		log.Fatal(err)
+		// the string message for ExitError shouldn't be logged
+		// as it is just `exit status $CODE`, which is redundant
+		// when that code can just be used to exit the program
+		if _, ok := err.(*exec.ExitError); ok && strings.HasPrefix(err.Error(), "exit status ") {
+			os.Exit(status)
+		} else {
+			log.Fatal(err)
+		}
 	}
 	os.Exit(status)
 }
