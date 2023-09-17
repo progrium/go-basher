@@ -36,7 +36,7 @@ bash:
 	go-bindata -tags=linux,arm -o=bash_linux_arm.go -prefix=$(BASH_DIR)/linux-arm -pkg=basher $(BASH_DIR)/linux-arm
 	go-bindata -tags=linux,arm64 -o=bash_linux_arm64.go -prefix=$(BASH_DIR)/linux-arm64 -pkg=basher $(BASH_DIR)/linux-arm64
 	go-bindata -tags=linux,amd64 -o=bash_linux_amd64.go -prefix=$(BASH_DIR)/linux-amd64 -pkg=basher $(BASH_DIR)/linux-amd64
-	go-bindata -tags=darwin,amd64 -o=bash_darwin_arm64.go -prefix=$(BASH_DIR)/osx-amd64 -pkg=basher $(BASH_DIR)/osx-amd64
+	go-bindata -tags=darwin,arm64 -o=bash_darwin_arm64.go -prefix=$(BASH_DIR)/osx-arm64 -pkg=basher $(BASH_DIR)/osx-arm64
 	go-bindata -tags=darwin,amd64 -o=bash_darwin_amd64.go -prefix=$(BASH_DIR)/osx-amd64 -pkg=basher $(BASH_DIR)/osx-amd64
 
 circleci:
