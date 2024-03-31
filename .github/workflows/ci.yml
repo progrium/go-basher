@@ -1,0 +1,30 @@
+---
+name: CI
+
+# yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "master"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: true
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        shell: bash
+        run: |
+          make build
+      - name: Test
+        shell: bash
+        run: |
+          go get -d -t
+          go test -v

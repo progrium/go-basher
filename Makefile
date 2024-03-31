@@ -38,10 +38,3 @@ bash:
 	go-bindata -tags=linux,amd64 -o=bash_linux_amd64.go -prefix=$(BASH_DIR)/linux-amd64 -pkg=basher $(BASH_DIR)/linux-amd64
 	go-bindata -tags=darwin,arm64 -o=bash_darwin_arm64.go -prefix=$(BASH_DIR)/osx-arm64 -pkg=basher $(BASH_DIR)/osx-arm64
 	go-bindata -tags=darwin,amd64 -o=bash_darwin_amd64.go -prefix=$(BASH_DIR)/osx-amd64 -pkg=basher $(BASH_DIR)/osx-amd64
-
-circleci:
-	rm ~/.gitconfig
-	rm -rf /home/ubuntu/.go_workspace/src/github.com/$(OWNER)/$(NAME) && cd .. \
-		&& mkdir -p /home/ubuntu/.go_workspace/src/github.com/$(OWNER) \
-		&& mv $(NAME) /home/ubuntu/.go_workspace/src/github.com/$(OWNER)/$(NAME) \
-		&& ln -s /home/ubuntu/.go_workspace/src/github.com/$(OWNER)/$(NAME) $(NAME)
