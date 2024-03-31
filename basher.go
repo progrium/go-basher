@@ -4,7 +4,6 @@ package basher
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -165,12 +164,12 @@ func (c *Context) CopyEnv() {
 }
 
 // Source adds a shell script to the Context environment. The loader argument can be nil
-// which means it will use ioutil.Readfile and load from disk, but it exists so you
+// which means it will use os.Readfile and load from disk, but it exists so you
 // can use the Asset function produced by go-bindata when including script files in
 // your Go binary. Calls to Source adds files to the environment in order.
 func (c *Context) Source(filepath string, loader func(string) ([]byte, error)) error {
 	if loader == nil {
-		loader = ioutil.ReadFile
+		loader = os.ReadFile
 	}
 	data, err := loader(filepath)
 	if err != nil {
@@ -218,7 +217,7 @@ func (c *Context) HandleFuncs(args []string) bool {
 }
 
 func (c *Context) buildEnvfile() (string, error) {
-	file, err := ioutil.TempFile(os.TempDir(), "bashenv.")
+	file, err := os.CreateTemp(os.TempDir(), "bashenv.")
 	if err != nil {
 		return "", err
 	}
