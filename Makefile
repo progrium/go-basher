@@ -7,7 +7,7 @@ test:
 	go test -v
 
 build:
-	go install || true
+	go install
 
 deps:
 	go get -u github.com/a-urth/go-bindata/...

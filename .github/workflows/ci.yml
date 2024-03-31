@@ -22,6 +22,8 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          go mod init
+          go mod tidy
           make build
       - name: Test
         shell: bash
