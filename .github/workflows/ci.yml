@@ -22,7 +22,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          go mod init
+          go mod init github.com/progrium/go-basher
           go mod tidy
           make build
       - name: Test
