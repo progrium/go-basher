@@ -2,7 +2,7 @@
 
 A Go library for creating Bash environments, exporting Go functions in them as Bash functions, and running commands in that Bash environment. Combined with a tool like [go-bindata](https://github.com/jteeuwen/go-bindata), you can write programs that are part written in Go and part written in Bash that can be distributed as standalone binaries.
 
-![Github Actions](https://github.com/github/docs/actions/workflows/ci.yml/badge.svg) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
+![Github Actions](https://github.com/progrium/go-basher/actions/workflows/ci.yml/badge.svg) [![GoDoc](https://godoc.org/github.com/progrium/go-basher?status.svg)](http://godoc.org/github.com/progrium/go-basher)
 
 ## Using go-basher
 
