@@ -298,6 +298,8 @@ func (c *Context) Run(command string, args []string) (int, error) {
 				if err != nil {
 					errChan <- err
 				}
+				signal.Stop(signals)
+				close(signals)
 			}
 		}
 	}()
