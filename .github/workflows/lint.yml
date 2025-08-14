@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run markdown-lint
         uses: avto-dev/markdown-lint@04d43ee9191307b50935a753da3b775ab695eceb
         # v1.5.0 => 04d43ee9191307b50935a753da3b775ab695eceb
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run shellcheck
         uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
         # 1.1.0 => 94e0aab03ca135d11a35e5bfc14e6746dc56e7e9
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run shfmt
         uses: luizm/action-sh-checker@17bd25a6ee188d2b91f677060038f4ba37ba14b2
         # v0.3.0 => 7f44869033b40ee4ffe7dc76c87a1bc66e3d025a
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Run yamllint
         uses: ibiqlik/action-yamllint@2576378a8e339169678f9939646ee3ee325e845c
         # v3.0.4 => ed2b6e911569708ed121c14b87d513860a7e36a7
