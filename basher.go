@@ -282,7 +282,7 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	signal.Notify(signals)
 	signal.Ignore(syscall.SIGURG)
 
-	cmd := exec.Command(c.BashPath, "-c", command+argstring)
+	cmd := exec.Command(c.BashPath, "-c", "source '"+envfile+"'; "+command+argstring)
 	cmd.Env = []string{"BASH_ENV=" + envfile}
 	cmd.Stdin = c.Stdin
 	cmd.Stdout = c.Stdout

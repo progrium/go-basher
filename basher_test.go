@@ -2,7 +2,9 @@ package basher
 
 import (
 	"bytes"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -135,6 +137,41 @@ func TestOddArgs(t *testing.T) {
 	}
 
 	if stdout.String() != "arg: <hel\n\\'lo>" {
+		t.Fatal("unexpected stdout:", stdout.String())
+	}
+}
+
+func TestRunWithSocketStdin(t *testing.T) {
+	// Bash 5.x does not source BASH_ENV when stdin is a Unix socket.
+	// This is the default configuration in go-basher since NewContext
+	// sets Stdin to os.Stdin, which may be a socket (e.g. when the
+	// calling process is managed by a process supervisor, systemd
+	// socket activation, or similar).
+	//
+	// The fix is to explicitly source the envfile in the -c command
+	// string instead of relying on BASH_ENV.
+	fds, err := syscall.Socketpair(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		t.Skip("socketpair not available:", err)
+	}
+	sockFile := os.NewFile(uintptr(fds[0]), "socket")
+	defer sockFile.Close()
+	defer syscall.Close(fds[1])
+
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+	bash.Stdin = sockFile
+
+	var stdout bytes.Buffer
+	bash.Stdout = &stdout
+	status, err := bash.Run("main", []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatal("non-zero exit, status:", status)
+	}
+	if stdout.String() != "hello\n" {
 		t.Fatal("unexpected stdout:", stdout.String())
 	}
 }
