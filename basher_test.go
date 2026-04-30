@@ -18,11 +18,12 @@ import (
 var bashpath = "/bin/bash"
 
 var testScripts = map[string]string{
-	"hello.sh":  `main() { echo "hello"; }`,
-	"cat.sh":    `main() { cat; }`,
-	"printf.sh": `main() { printf "arg: <%s>" "$@"; }`,
-	"foobar.sh": `main() { echo $FOOBAR; }`,
-	"sleep.sh":  `main() { sleep 0.2; }`,
+	"hello.sh":     `main() { echo "hello"; }`,
+	"cat.sh":       `main() { cat; }`,
+	"printf.sh":    `main() { printf "arg: <%s>" "$@"; }`,
+	"foobar.sh":    `main() { echo $FOOBAR; }`,
+	"sleep.sh":     `main() { sleep 0.2; }`,
+	"longsleep.sh": `main() { sleep 2; }`,
 }
 
 func testLoader(name string) ([]byte, error) {
@@ -524,12 +525,17 @@ func TestRunContextAlreadyCanceled(t *testing.T) {
 
 func TestRunContextCanceledDuringRun(t *testing.T) {
 	bash, _ := NewContext(bashpath, false)
-	bash.Source("sleep.sh", testLoader)
-	bash.Stdout = io.Discard
+	bash.Source("longsleep.sh", testLoader)
+	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devnull.Close()
+	bash.Stdout = devnull
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		cancel()
 	}()
 	defer cancel()
@@ -552,10 +558,15 @@ func TestRunContextCanceledDuringRun(t *testing.T) {
 
 func TestRunContextDeadline(t *testing.T) {
 	bash, _ := NewContext(bashpath, false)
-	bash.Source("sleep.sh", testLoader)
-	bash.Stdout = io.Discard
+	bash.Source("longsleep.sh", testLoader)
+	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devnull.Close()
+	bash.Stdout = devnull
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	start := time.Now()
