@@ -218,6 +218,93 @@ func TestRunDoesNotLeakGoroutines(t *testing.T) {
 	}
 }
 
+type shortWriter struct {
+	remaining int
+	err       error
+}
+
+func (w *shortWriter) Write(p []byte) (int, error) {
+	if w.remaining <= 0 {
+		return 0, w.err
+	}
+	if len(p) <= w.remaining {
+		w.remaining -= len(p)
+		return len(p), nil
+	}
+	n := w.remaining
+	w.remaining = 0
+	return n, w.err
+}
+
+func TestWriteEnvfileContents(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.SelfPath = "/bin/echo"
+	bash.Source("hello.sh", testLoader)
+	bash.Export("FOOBAR", "baz")
+	bash.ExportFunc("myfunc", func([]string) {})
+	bash.vars = append(bash.vars, "BASH_FUNC_helper%%=() { echo hi; }")
+
+	var buf bytes.Buffer
+	if err := bash.writeEnvfile(&buf); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+
+	wants := []string{
+		"unset BASH_ENV\n",
+		"export SELF=",
+		"export SELF_EXECUTABLE='/bin/echo'\n",
+		"export FOOBAR=$'baz'\n",
+		"helper() { echo hi; }\n",
+		"export -f helper\n",
+		"myfunc() { $SELF_EXECUTABLE ::: myfunc \"$@\"; }\n",
+		`main() { echo "hello"; }` + "\n",
+	}
+	for _, w := range wants {
+		if !strings.Contains(out, w) {
+			t.Errorf("envfile missing %q\nfull output:\n%s", w, out)
+		}
+	}
+}
+
+func TestWriteEnvfileWriteError(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+	bash.Export("FOOBAR", "baz")
+
+	w := &shortWriter{remaining: 8, err: io.ErrShortWrite}
+	err := bash.writeEnvfile(w)
+	if err == nil {
+		t.Fatal("expected error from writeEnvfile when underlying writer fails")
+	}
+}
+
+func TestBuildEnvfileWritesAndClosesFile(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+	bash.Export("FOOBAR", "baz")
+
+	name, err := bash.buildEnvfile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(name)
+
+	data, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) == 0 {
+		t.Fatal("envfile is empty")
+	}
+	if !strings.Contains(string(data), "unset BASH_ENV\n") {
+		t.Fatalf("envfile missing sentinel; contents:\n%s", data)
+	}
+	if !strings.Contains(string(data), `main() { echo "hello"; }`) {
+		t.Fatalf("envfile missing sourced script; contents:\n%s", data)
+	}
+}
+
 func TestIsBashFunc(t *testing.T) {
 	if isBashFunc("", "") {
 		t.Fatal("empty string is not a bash func")
