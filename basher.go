@@ -281,6 +281,7 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals)
 	signal.Ignore(syscall.SIGURG)
+	defer signal.Stop(signals)
 
 	cmd := exec.Command(c.BashPath, "-c", "source '"+envfile+"'; "+command+argstring)
 	cmd.Env = []string{"BASH_ENV=" + envfile}
@@ -290,20 +291,21 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
-	errChan := make(chan error, 1)
+
+	done := make(chan struct{})
+	defer close(done)
 	go func() {
-		for sig := range signals {
-			if sig != syscall.SIGCHLD {
-				err = cmd.Process.Signal(sig)
-				if err != nil {
-					errChan <- err
+		for {
+			select {
+			case sig := <-signals:
+				if sig != nil && sig != syscall.SIGCHLD {
+					_ = cmd.Process.Signal(sig)
 				}
+			case <-done:
+				return
 			}
 		}
 	}()
-	go func() {
-		errChan <- cmd.Wait()
-	}()
-	err = <-errChan
-	return exitStatus(err)
+
+	return exitStatus(cmd.Wait())
 }
