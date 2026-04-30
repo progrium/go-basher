@@ -18,6 +18,7 @@ var testScripts = map[string]string{
 	"cat.sh":    `main() { cat; }`,
 	"printf.sh": `main() { printf "arg: <%s>" "$@"; }`,
 	"foobar.sh": `main() { echo $FOOBAR; }`,
+	"sleep.sh":  `main() { sleep 0.2; }`,
 }
 
 func testLoader(name string) ([]byte, error) {
@@ -215,6 +216,39 @@ func TestRunDoesNotLeakGoroutines(t *testing.T) {
 
 	if delta := current - baseline; delta > 5 {
 		t.Fatalf("goroutine leak: baseline=%d after %d Run calls=%d (delta=%d)", baseline, iterations, current, delta)
+	}
+}
+
+func TestRunSignalForwardingNoRace(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("sleep.sh", testLoader)
+	bash.Stdout = io.Discard
+
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(2 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				_ = syscall.Kill(syscall.Getpid(), syscall.SIGWINCH)
+			}
+		}
+	}()
+
+	status, err := bash.Run("main", []string{})
+	close(stop)
+	<-done
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatalf("non-zero exit: %d", status)
 	}
 }
 
