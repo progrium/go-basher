@@ -9,13 +9,21 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/kardianos/osext"
 	"github.com/mitchellh/go-homedir"
 )
+
+// staleBashTmpAge is the minimum age before a leftover "bash.tmp.*" file is
+// treated as orphaned from a crashed extraction rather than in-flight from a
+// concurrent call. Extraction of the embedded bash asset completes in
+// milliseconds, so anything an hour old cannot belong to a live extractor.
+const staleBashTmpAge = time.Hour
 
 func exitStatus(err error) (int, error) {
 	if err != nil {
@@ -53,13 +61,10 @@ func Application(
 		log.Fatal(err, "1")
 	}
 
-	bashPath := bashDir + "/bash"
-	if _, err := os.Stat(bashPath); os.IsNotExist(err) {
-		err = RestoreAsset(bashDir, "bash")
-		if err != nil {
-			log.Fatal(err, "1")
-		}
+	if err := restoreBashAtomically(bashDir); err != nil {
+		log.Fatal(err, "1")
 	}
+	bashPath := filepath.Join(bashDir, "bash")
 
 	ApplicationWithPath(funcs, scripts, loader, copyEnv, bashPath)
 }
@@ -104,6 +109,95 @@ func ApplicationWithPath(
 		}
 	}
 	os.Exit(status)
+}
+
+// restoreBashAtomically extracts the embedded "bash" asset to dir/bash so
+// that concurrent first-run invocations cannot observe a partial file. It
+// writes the asset to a unique temp file in the same directory and renames it
+// into place; the rename is atomic on POSIX filesystems, so any visible
+// dir/bash is always byte-complete. If dir/bash already exists, no work is
+// done. After a successful extraction, stale "bash.tmp.*" files left behind
+// by previously crashed extractions are best-effort swept.
+func restoreBashAtomically(dir string) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	finalPath := filepath.Join(dir, "bash")
+	if _, err := os.Stat(finalPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	data, err := Asset("bash")
+	if err != nil {
+		return err
+	}
+	info, err := AssetInfo("bash")
+	if err != nil {
+		return err
+	}
+
+	tmp, err := os.CreateTemp(dir, "bash.tmp.*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	committed := false
+	defer func() {
+		if !committed {
+			os.Remove(tmpName)
+		}
+	}()
+
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmpName, info.Mode()); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpName, finalPath); err != nil {
+		return err
+	}
+	committed = true
+
+	sweepStaleBashTmp(dir, filepath.Base(tmpName), staleBashTmpAge)
+	return nil
+}
+
+// sweepStaleBashTmp removes "bash.tmp.*" entries in dir whose mtime is older
+// than maxAge, skipping skipName. It is best-effort: errors are swallowed
+// because the only consequence of failure is leftover bytes on disk.
+func sweepStaleBashTmp(dir, skipName string, maxAge time.Duration) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if name == skipName {
+			continue
+		}
+		if !strings.HasPrefix(name, "bash.tmp.") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if time.Since(info.ModTime()) >= maxAge {
+			os.Remove(filepath.Join(dir, name))
+		}
+	}
 }
 
 // A Context is an instance of a Bash interpreter and environment, including

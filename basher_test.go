@@ -2,10 +2,13 @@ package basher
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -336,6 +339,153 @@ func TestBuildEnvfileWritesAndClosesFile(t *testing.T) {
 	}
 	if !strings.Contains(string(data), `main() { echo "hello"; }`) {
 		t.Fatalf("envfile missing sourced script; contents:\n%s", data)
+	}
+}
+
+func TestRestoreBashAtomicallyFreshDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := restoreBashAtomically(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	bashPath := filepath.Join(dir, "bash")
+	got, err := os.ReadFile(bashPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := Asset("bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha256.Sum256(got) != sha256.Sum256(want) {
+		t.Fatalf("extracted bash bytes differ from embedded asset (got %d bytes, want %d)", len(got), len(want))
+	}
+
+	info, err := os.Stat(bashPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&0111 == 0 {
+		t.Fatalf("extracted bash is not executable: mode=%v", info.Mode())
+	}
+}
+
+func TestRestoreBashAtomicallyNoOpWhenPresent(t *testing.T) {
+	dir := t.TempDir()
+	bashPath := filepath.Join(dir, "bash")
+	sentinel := []byte("sentinel-not-bash")
+	if err := os.WriteFile(bashPath, sentinel, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := restoreBashAtomically(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := os.ReadFile(bashPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, sentinel) {
+		t.Fatalf("existing bash file was overwritten; got %q want %q", got, sentinel)
+	}
+}
+
+func TestRestoreBashAtomicallyNoTempLeftover(t *testing.T) {
+	dir := t.TempDir()
+	if err := restoreBashAtomically(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	matches, err := filepath.Glob(filepath.Join(dir, "bash.tmp.*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("expected no bash.tmp.* leftovers, got %v", matches)
+	}
+}
+
+func TestRestoreBashAtomicallySweepsStaleTemp(t *testing.T) {
+	dir := t.TempDir()
+
+	stalePath := filepath.Join(dir, "bash.tmp.stale")
+	if err := os.WriteFile(stalePath, []byte("orphan"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(stalePath, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	freshPath := filepath.Join(dir, "bash.tmp.fresh")
+	if err := os.WriteFile(freshPath, []byte("inflight"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := restoreBashAtomically(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(stalePath); !os.IsNotExist(err) {
+		t.Fatalf("expected stale temp to be removed, stat err=%v", err)
+	}
+	if _, err := os.Stat(freshPath); err != nil {
+		t.Fatalf("expected fresh temp to be left alone, got err=%v", err)
+	}
+}
+
+func TestRestoreBashAtomicallyConcurrent(t *testing.T) {
+	dir := t.TempDir()
+
+	const workers = 16
+	start := make(chan struct{})
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			<-start
+			errs <- restoreBashAtomically(dir)
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("concurrent restoreBashAtomically failed: %v", err)
+		}
+	}
+
+	bashPath := filepath.Join(dir, "bash")
+	got, err := os.ReadFile(bashPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := Asset("bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sha256.Sum256(got) != sha256.Sum256(want) {
+		t.Fatalf("torn write: extracted bash bytes differ from embedded asset (got %d bytes, want %d)", len(got), len(want))
+	}
+
+	info, err := os.Stat(bashPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode()&0111 == 0 {
+		t.Fatalf("extracted bash is not executable: mode=%v", info.Mode())
+	}
+
+	matches, err := filepath.Glob(filepath.Join(dir, "bash.tmp.*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("expected no bash.tmp.* leftovers after concurrent run, got %v", matches)
 	}
 }
 
