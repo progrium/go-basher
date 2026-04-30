@@ -55,7 +55,18 @@ func Application(
 
 	bashPath := bashDir + "/bash"
 	if _, err := os.Stat(bashPath); os.IsNotExist(err) {
-		err = RestoreAsset(bashDir, "bash")
+		tmpDir, err := os.MkdirTemp(bashDir, "extract-*")
+		if err != nil {
+			log.Fatal(err, "1")
+		}
+		defer os.RemoveAll(tmpDir)
+
+		err = RestoreAsset(tmpDir, "bash")
+		if err != nil {
+			log.Fatal(err, "1")
+		}
+
+		err = os.Rename(tmpDir+"/bash", bashPath)
 		if err != nil {
 			log.Fatal(err, "1")
 		}
