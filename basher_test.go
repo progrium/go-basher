@@ -2,6 +2,7 @@ package basher
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"io"
 	"os"
@@ -486,6 +487,89 @@ func TestRestoreBashAtomicallyConcurrent(t *testing.T) {
 	}
 	if len(matches) != 0 {
 		t.Fatalf("expected no bash.tmp.* leftovers after concurrent run, got %v", matches)
+	}
+}
+
+func TestRunContextBackground(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+
+	var stdout bytes.Buffer
+	bash.Stdout = &stdout
+	status, err := bash.RunContext(context.Background(), "main", []string{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != 0 {
+		t.Fatal("non-zero exit")
+	}
+	if stdout.String() != "hello\n" {
+		t.Fatal("unexpected stdout:", stdout.String())
+	}
+}
+
+func TestRunContextAlreadyCanceled(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+	bash.Stdout = io.Discard
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	status, err := bash.RunContext(ctx, "main", []string{})
+	if err == nil {
+		t.Fatalf("expected error from canceled context, got nil (status=%d)", status)
+	}
+}
+
+func TestRunContextCanceledDuringRun(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("sleep.sh", testLoader)
+	bash.Stdout = io.Discard
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		cancel()
+	}()
+	defer cancel()
+
+	deadline := time.Now().Add(time.Second)
+	start := time.Now()
+	status, err := bash.RunContext(ctx, "main", []string{})
+	elapsed := time.Since(start)
+
+	if time.Now().After(deadline) {
+		t.Fatalf("RunContext did not return promptly after cancel; elapsed=%v", elapsed)
+	}
+	if err == nil {
+		t.Fatalf("expected error from canceled context, got nil (status=%d)", status)
+	}
+	if status == 0 {
+		t.Fatalf("expected non-zero exit status from killed bash, got 0")
+	}
+}
+
+func TestRunContextDeadline(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("sleep.sh", testLoader)
+	bash.Stdout = io.Discard
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	start := time.Now()
+	status, err := bash.RunContext(ctx, "main", []string{})
+	elapsed := time.Since(start)
+
+	if elapsed > time.Second {
+		t.Fatalf("RunContext did not honor deadline; elapsed=%v", elapsed)
+	}
+	if err == nil {
+		t.Fatalf("expected error from expired deadline, got nil (status=%d)", status)
+	}
+	if status == 0 {
+		t.Fatalf("expected non-zero exit status from killed bash, got 0")
 	}
 }
 

@@ -3,6 +3,7 @@ package basher
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -56,6 +57,19 @@ func Application(
 	loader func(string) ([]byte, error),
 	copyEnv bool) {
 
+	ApplicationContext(context.Background(), funcs, scripts, loader, copyEnv)
+}
+
+// ApplicationContext is like Application but accepts a context.Context that is
+// forwarded to the underlying Bash invocation. Cancelling ctx kills the Bash
+// process via exec.CommandContext (SIGKILL).
+func ApplicationContext(
+	ctx context.Context,
+	funcs map[string]func([]string),
+	scripts []string,
+	loader func(string) ([]byte, error),
+	copyEnv bool) {
+
 	bashDir, err := homedir.Expand("~/.basher")
 	if err != nil {
 		log.Fatal(err, "1")
@@ -66,12 +80,26 @@ func Application(
 	}
 	bashPath := filepath.Join(bashDir, "bash")
 
-	ApplicationWithPath(funcs, scripts, loader, copyEnv, bashPath)
+	ApplicationWithPathContext(ctx, funcs, scripts, loader, copyEnv, bashPath)
 }
 
 // ApplicationWithPath functions as Application does while also
 // allowing the developer to modify the specified bashPath.
 func ApplicationWithPath(
+	funcs map[string]func([]string),
+	scripts []string,
+	loader func(string) ([]byte, error),
+	copyEnv bool,
+	bashPath string) {
+
+	ApplicationWithPathContext(context.Background(), funcs, scripts, loader, copyEnv, bashPath)
+}
+
+// ApplicationWithPathContext is like ApplicationWithPath but accepts a
+// context.Context that is forwarded to the underlying Bash invocation.
+// Cancelling ctx kills the Bash process via exec.CommandContext (SIGKILL).
+func ApplicationWithPathContext(
+	ctx context.Context,
 	funcs map[string]func([]string),
 	scripts []string,
 	loader func(string) ([]byte, error),
@@ -97,7 +125,7 @@ func ApplicationWithPath(
 	if copyEnv {
 		bash.CopyEnv()
 	}
-	status, err := bash.Run("main", os.Args[1:])
+	status, err := bash.RunContext(ctx, "main", os.Args[1:])
 	if err != nil {
 		// the string message for ExitError shouldn't be logged
 		// as it is just `exit status $CODE`, which is redundant
@@ -387,6 +415,14 @@ func isBashFunc(key string, value string) bool {
 // default is attached to the calling process I/O. You can change this by setting
 // the Stdout, Stderr, Stdin variables of the Context.
 func (c *Context) Run(command string, args []string) (int, error) {
+	return c.RunContext(context.Background(), command, args)
+}
+
+// RunContext is like Run but uses exec.CommandContext under the hood, so
+// cancelling ctx terminates the Bash process. Per exec.CommandContext, the
+// child receives SIGKILL when ctx is cancelled. Parent-process signals are
+// still forwarded to Bash for the lifetime of the call regardless of ctx.
+func (c *Context) RunContext(ctx context.Context, command string, args []string) (int, error) {
 	c.Lock()
 	defer c.Unlock()
 	envfile, err := c.buildEnvfile()
@@ -406,7 +442,7 @@ func (c *Context) Run(command string, args []string) (int, error) {
 	signal.Ignore(syscall.SIGURG)
 	defer signal.Stop(signals)
 
-	cmd := exec.Command(c.BashPath, "-c", "source '"+envfile+"'; "+command+argstring)
+	cmd := exec.CommandContext(ctx, c.BashPath, "-c", "source '"+envfile+"'; "+command+argstring)
 	cmd.Env = []string{"BASH_ENV=" + envfile}
 	cmd.Stdin = c.Stdin
 	cmd.Stdout = c.Stdout
