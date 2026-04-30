@@ -57,6 +57,19 @@ main() {
 }
 ```
 
+## Cancellation with context
+
+`Context.RunContext` accepts a `context.Context` and is otherwise identical to `Run`. Cancelling the context terminates the underlying Bash process via `exec.CommandContext`, which sends `SIGKILL`.
+
+```Go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+status, err := bash.RunContext(ctx, "main", os.Args[1:])
+```
+
+`ApplicationContext` and `ApplicationWithPathContext` are context-aware variants of the `Application*` helpers that forward `ctx` into the Bash invocation.
+
 ## Using go-basher with go-bindata
 
 You can bundle your Bash scripts into your Go binary using [go-bindata](https://github.com/jteeuwen/go-bindata). First install go-bindata:
