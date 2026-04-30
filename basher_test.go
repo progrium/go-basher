@@ -2,10 +2,13 @@ package basher
 
 import (
 	"bytes"
+	"io"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 var bashpath = "/bin/bash"
@@ -173,6 +176,45 @@ func TestRunWithSocketStdin(t *testing.T) {
 	}
 	if stdout.String() != "hello\n" {
 		t.Fatal("unexpected stdout:", stdout.String())
+	}
+}
+
+func TestRunDoesNotLeakGoroutines(t *testing.T) {
+	bash, _ := NewContext(bashpath, false)
+	bash.Source("hello.sh", testLoader)
+	bash.Stdout = io.Discard
+
+	if _, err := bash.Run("main", []string{}); err != nil {
+		t.Fatal(err)
+	}
+
+	runtime.GC()
+	baseline := runtime.NumGoroutine()
+
+	const iterations = 50
+	for i := 0; i < iterations; i++ {
+		status, err := bash.Run("main", []string{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if status != 0 {
+			t.Fatalf("non-zero exit on iteration %d", i)
+		}
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	var current int
+	for {
+		runtime.GC()
+		current = runtime.NumGoroutine()
+		if current-baseline <= 5 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if delta := current - baseline; delta > 5 {
+		t.Fatalf("goroutine leak: baseline=%d after %d Run calls=%d (delta=%d)", baseline, iterations, current, delta)
 	}
 }
 
