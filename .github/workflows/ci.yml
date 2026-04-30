@@ -29,4 +29,4 @@ jobs:
         shell: bash
         run: |
           go get -d -t
-          go test -v
+          go test -race -v

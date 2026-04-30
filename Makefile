@@ -4,7 +4,7 @@ BASH_DIR=.bash
 BASH_STATIC_VERSION=5.1.008-1.2.2
 
 test:
-	go test -v
+	go test -race -v
 
 build:
 	go install
