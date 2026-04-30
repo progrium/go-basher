@@ -2,6 +2,7 @@
 package basher
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -221,11 +222,38 @@ func (c *Context) buildEnvfile() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	name := file.Name()
+
+	cleanup := func() {
+		file.Close()
+		os.Remove(name)
+	}
+
+	if err := c.writeEnvfile(file); err != nil {
+		cleanup()
+		return "", err
+	}
+	if err := file.Sync(); err != nil {
+		cleanup()
+		return "", err
+	}
+	if err := file.Close(); err != nil {
+		os.Remove(name)
+		return "", err
+	}
+	return name, nil
+}
+
+// writeEnvfile writes the BASH_ENV contents for this Context to w. Writes go
+// through a bufio.Writer so that any short-write or underlying I/O error is
+// captured and surfaced from the final Flush, rather than being silently
+// dropped by individual Write calls.
+func (c *Context) writeEnvfile(w io.Writer) error {
+	bw := bufio.NewWriter(w)
 	// variables
-	file.Write([]byte("unset BASH_ENV\n")) // unset for future calls to bash
-	file.Write([]byte("export SELF=" + os.Args[0] + "\n"))
-	file.Write([]byte("export SELF_EXECUTABLE='" + c.SelfPath + "'\n"))
+	fmt.Fprint(bw, "unset BASH_ENV\n") // unset for future calls to bash
+	fmt.Fprintf(bw, "export SELF=%s\n", os.Args[0])
+	fmt.Fprintf(bw, "export SELF_EXECUTABLE='%s'\n", c.SelfPath)
 	for _, kvp := range c.vars {
 		pair := strings.SplitN(kvp, "=", 2)
 		if len(pair) != 2 || strings.TrimSpace(pair[0]) == "" {
@@ -233,25 +261,26 @@ func (c *Context) buildEnvfile() (string, error) {
 		}
 
 		if isBashFunc(pair[0], pair[1]) {
-			bash_function_name := strings.TrimPrefix(pair[0], "BASH_FUNC_")
-			bash_function_name = strings.TrimSuffix(bash_function_name, "%%")
-			file.Write([]byte(fmt.Sprintf("%s%s\n", bash_function_name, pair[1])))
-			file.Write([]byte(fmt.Sprintf("export -f %s\n", bash_function_name)))
+			bashFuncName := strings.TrimPrefix(pair[0], "BASH_FUNC_")
+			bashFuncName = strings.TrimSuffix(bashFuncName, "%%")
+			fmt.Fprintf(bw, "%s%s\n", bashFuncName, pair[1])
+			fmt.Fprintf(bw, "export -f %s\n", bashFuncName)
 			continue
 		}
 
-		file.Write([]byte("export " + strings.Replace(
-			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1) + "'\n"))
+		fmt.Fprintf(bw, "export %s'\n", strings.Replace(
+			strings.Replace(kvp, "'", "\\'", -1), "=", "=$'", 1))
 	}
 	// functions
 	for cmd := range c.funcs {
-		file.Write([]byte(cmd + "() { $SELF_EXECUTABLE ::: " + cmd + " \"$@\"; }\n"))
+		fmt.Fprintf(bw, "%s() { $SELF_EXECUTABLE ::: %s \"$@\"; }\n", cmd, cmd)
 	}
 	// scripts
 	for _, data := range c.scripts {
-		file.Write(append(data, '\n'))
+		bw.Write(data)
+		bw.WriteByte('\n')
 	}
-	return file.Name(), nil
+	return bw.Flush()
 }
 
 func isBashFunc(key string, value string) bool {
